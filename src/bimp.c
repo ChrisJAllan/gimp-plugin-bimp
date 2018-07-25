@@ -29,12 +29,14 @@
 #include "bimp.h"
 #include "bimp-manipulations.h"
 #include "bimp-gui.h"
+#include "bimp-operate.h"
+#include "bimp-serialize.h"
 #include "bimp-utils.h"
 #include "plugin-intl.h"
 
 static void query (void);
 static gboolean pdb_proc_has_compatible_params (gchar*);
-static void bimp_run_set(const gchar *set_file, gint size, const gchar **input_files, const gchar *output_dir);
+static void bimp_run_set(gchar *set_file, gint size, gchar **input_files, gchar *output_dir, gboolean keep_hierarchy, gboolean keep_dates);
 
 static void run (
     const gchar *name,
@@ -60,7 +62,9 @@ static void query (void)
         { GIMP_PDB_STRING, "set-file", "Set file" },
         { GIMP_PDB_INT32, "file-count", "Number of input files" },
         { GIMP_PDB_STRINGARRAY, "input-files", "Input files" },
-        { GIMP_PDB_STRING, "output-dir", "Output folder" }
+        { GIMP_PDB_STRING, "output-dir", "Output folder" },
+        { GIMP_PDB_INT32, "keep-folder-hierarchy", "Keep folder hierarchy" },
+        { GIMP_PDB_INT32, "keep-dates", "Keep modification times" }
     };
     
     gimp_plugin_domain_register (GETTEXT_PACKAGE, get_bimp_localedir());
@@ -119,7 +123,9 @@ static void run (
                 param[1].data.d_string,
                 param[2].data.d_int32,
                 param[3].data.d_stringarray,
-                param[4].data.d_string);
+                param[4].data.d_string,
+                param[5].data.d_int32,
+                param[6].data.d_int32);
             break;
 
         default:
@@ -257,7 +263,7 @@ static gboolean pdb_proc_has_compatible_params(gchar* proc_name)
     return (compatible && num_params > 0);
 }
 
-static void bimp_run_set(const gchar *set_file, gint size, const gchar **input_files, const gchar *output_dir)
+static void bimp_run_set(gchar *set_file, gint size, gchar **input_files, gchar *output_dir, gboolean keep_hierarchy, gboolean keep_dates)
 {
     if (!bimp_deserialize_from_file(set_file)) {
         g_error("An error occured when importing a saved batch file :(");
@@ -280,11 +286,10 @@ static void bimp_run_set(const gchar *set_file, gint size, const gchar **input_f
             g_error("The file list is empty!");
         }
         else {
-            // TODO: Get values from parameters
             bimp_opt_alertoverwrite = BIMP_OVERWRITE_SKIP_ASK;
-            bimp_opt_keepfolderhierarchy = FALSE;
-            bimp_opt_deleteondone = FALSE;
-            bimp_opt_keepdates = FALSE;
+            bimp_opt_keepfolderhierarchy = keep_hierarchy;
+            bimp_opt_deleteondone = FALSE; // TODO?
+            bimp_opt_keepdates = keep_dates;
             bimp_start_batch(NULL);
         }
     }

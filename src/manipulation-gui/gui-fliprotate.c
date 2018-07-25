@@ -1,4 +1,5 @@
 #include <gtk/gtk.h>
+#include <gegl.h>
 #include <libgimpwidgets/gimpwidgets.h>
 #include "gui-fliprotate.h"
 #include "../bimp-manipulations.h"

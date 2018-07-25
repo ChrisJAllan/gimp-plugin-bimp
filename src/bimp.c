@@ -34,6 +34,7 @@
 
 static void query (void);
 static gboolean pdb_proc_has_compatible_params (gchar*);
+static void bimp_run_set(const gchar *set_file, gint size, const gchar **input_files, const gchar *output_dir);
 
 static void run (
     const gchar *name,
@@ -55,7 +56,11 @@ MAIN ()
 static void query (void)
 {
     static GimpParamDef args[] = {
-        { GIMP_PDB_INT32, "run-mode", "Run mode" }
+        { GIMP_PDB_INT32, "run-mode", "Run mode" },
+        { GIMP_PDB_STRING, "set-file", "Set file" },
+        { GIMP_PDB_INT32, "file-count", "Number of input files" },
+        { GIMP_PDB_STRINGARRAY, "input-files", "Input files" },
+        { GIMP_PDB_STRING, "output-dir", "Output folder" }
     };
     
     gimp_plugin_domain_register (GETTEXT_PACKAGE, get_bimp_localedir());
@@ -110,10 +115,16 @@ static void run (
             break;
 
         case GIMP_RUN_NONINTERACTIVE:
-        default:
-            g_error("Bimp can't run in non-interactive mode. At least for now...");
-            values[0].data.d_status = GIMP_PDB_CALLING_ERROR;
+            bimp_run_set(
+                param[1].data.d_string,
+                param[2].data.d_int32,
+                param[3].data.d_stringarray,
+                param[4].data.d_string);
             break;
+
+        default:
+            g_error("Unknown run mode.");
+            values[0].data.d_status = GIMP_PDB_CALLING_ERROR;
     }
 }
 
@@ -246,3 +257,35 @@ static gboolean pdb_proc_has_compatible_params(gchar* proc_name)
     return (compatible && num_params > 0);
 }
 
+static void bimp_run_set(const gchar *set_file, gint size, const gchar **input_files, const gchar *output_dir)
+{
+    if (!bimp_deserialize_from_file(set_file)) {
+        g_error("An error occured when importing a saved batch file :(");
+        return;
+    }
+    
+    for (gint i = 0; i < size; ++i) {
+        gchar *filename = input_files[i];
+        if (g_slist_find_custom(bimp_input_filenames, filename, (GCompareFunc)strcmp) == NULL) {
+            bimp_input_filenames = g_slist_append(bimp_input_filenames, filename);
+        }
+    }
+    
+    bimp_output_folder = output_dir;
+    
+    if (g_slist_length(bimp_selected_manipulations) == 0) {
+        g_error("The manipulations set is empty!");
+    } else {
+        if (g_slist_length(bimp_input_filenames) == 0) {
+            g_error("The file list is empty!");
+        }
+        else {
+            // TODO: Get values from parameters
+            bimp_opt_alertoverwrite = BIMP_OVERWRITE_SKIP_ASK;
+            bimp_opt_keepfolderhierarchy = FALSE;
+            bimp_opt_deleteondone = FALSE;
+            bimp_opt_keepdates = FALSE;
+            bimp_start_batch(NULL);
+        }
+    }
+}

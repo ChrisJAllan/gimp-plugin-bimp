@@ -1057,6 +1057,11 @@ static void open_about()
 /* shows an error dialog with a custom message */
 void bimp_show_error_dialog(char* message, GtkWidget* parent) 
 {
+    if (parent == NULL) {
+        g_error(message);
+        return;
+    }
+    
     GtkWidget* dialog = gtk_message_dialog_new (
         GTK_WINDOW(parent),
         GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,

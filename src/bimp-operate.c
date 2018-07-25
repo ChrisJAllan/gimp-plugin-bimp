@@ -136,8 +136,12 @@ void bimp_start_batch(gpointer parent_dialog)
         g_strfreev(common_folder);
     }
     
-    // start on a new thread
-    guint batch_idle_tag = g_idle_add((GSourceFunc)process_image, parent_dialog);
+    // start on a new thread if running interactively
+    if (parent_dialog != NULL) {
+        guint batch_idle_tag = g_idle_add((GSourceFunc)process_image, parent_dialog);
+    } else {
+        while (process_image(parent_dialog));
+    }
 }
 
 void bimp_init_batch()
